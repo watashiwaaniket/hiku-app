@@ -1,12 +1,13 @@
 "use server"
 
-import { redirect } from "next/dist/server/api-utils"
+import { redirect } from "next/navigation"
 import { getUserFromCookie } from "../lib/getUser"
 import { ObjectId } from "mongodb"
+import { getCollection } from "../lib/db"
 
 function isAlphaNumericWithBasics(text) {
     const regex = /^[a-zA-Z0-9 .,]*$/
-    return regex.text(text)
+    return regex.test(text)
 }
 
 async function sharedHaikuLogic(formData, user){
@@ -14,8 +15,8 @@ async function sharedHaikuLogic(formData, user){
 
     const ourHaiku = {
         line1: formData.get("line1"),
-        line1: formData.get("line1"),
-        line1: formData.get("line1"),
+        line2: formData.get("line2"),
+        line3: formData.get("line3"),
         author: ObjectId.createFromHexString(user.userId)
     }
 
@@ -31,18 +32,28 @@ async function sharedHaikuLogic(formData, user){
     ourHaiku.line2 = ourHaiku.line2.trim()
     ourHaiku.line3 = ourHaiku.line3.trim()
 
-    if (ourHaiku.line1.length < 5) error.line1 = "Too few syllables; must be 5."
-    if (ourHaiku.line1.length > 25) error.line1 = "Too many syllables; must be less than 25."
+    if (ourHaiku.line1.length < 5) errors.line1 = "Too few syllables; must be 5."
+    if (ourHaiku.line1.length > 25) errors.line1 = "Too many syllables; must be less than 25."
 
-    if (ourHaiku.line2.length < 7) error.line2 = "Too few syllables; must be 7."
-    if (ourHaiku.line2.length > 35) error.line2 = "Too many syllables; must be less than 35."
+    if (ourHaiku.line2.length < 7) errors.line2 = "Too few syllables; must be 7."
+    if (ourHaiku.line2.length > 35) errors.line2 = "Too many syllables; must be less than 35."
 
-    if (ourHaiku.line3.length < 5) error.line3 = "Too few syllables; must be 5."
-    if (ourHaiku.line3.length > 25) error.line3 = "Too many syllables; must be less than 25."
+    if (ourHaiku.line3.length < 5) errors.line3 = "Too few syllables; must be 5."
+    if (ourHaiku.line3.length > 25) errors.line3 = "Too many syllables; must be less than 25."
 
     if (!isAlphaNumericWithBasics(ourHaiku.line1)) errors.line1 = "No special Characters allowed"
     if (!isAlphaNumericWithBasics(ourHaiku.line2)) errors.line2 = "No special Characters allowed"
     if (!isAlphaNumericWithBasics(ourHaiku.line3)) errors.line3 = "No special Characters allowed"
+
+    if (ourHaiku.line1.length == 0) errors.line1 = "This field is required."
+    if (ourHaiku.line2.length == 0) errors.line2 = "This field is required."
+    if (ourHaiku.line3.length == 0) errors.line3 = "This field is required."
+
+
+    return{
+        errors,
+        ourHaiku
+    }
 }
 
 export const createHaiku = async function(prevState, formData) {
@@ -52,9 +63,14 @@ export const createHaiku = async function(prevState, formData) {
         return redirect("/")
     }
 
-    return{
-        message: "Congrats"
+    const results = await sharedHaikuLogic(formData, user)
+
+    if (results.errors.line1 || results.errors.line2 || results.errors.line3){
+        return{errors: results.errors}
     }
 
-    const results = await sharedHaikuLogic(formData, user)
+    //save into db
+    const haikusCollection = await getCollection("haikus")
+    const newHaiku = await haikusCollection.insertOne(results.ourHaiku)
+    return redirect("/")
 }
