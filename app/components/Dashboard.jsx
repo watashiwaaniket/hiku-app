@@ -1,7 +1,7 @@
 import { ObjectId } from "mongodb"
-import Link from "next/link"
+
 import {getCollection} from "../../lib/db"
-import {deleteHaiku} from "../../actions/haikuController"
+import Haiku from "./Haiku"
 
 async function getHaikus(id){
     const  collection = await getCollection("haikus")
@@ -17,22 +17,7 @@ export default async function Dashboard(props) {
         <div>
             <h2 className="text-center text-2xl text-gray-600 mb-5"><strong>Your Haikus</strong></h2>
             {haikus.map((haiku, index) => {
-                return(
-                    <div key={index}>
-                        {haiku.line1}
-                        <br />
-                        {haiku.line2}
-                        <br />
-                        {haiku.line3}
-                        <br />
-                        <Link href={`/edit-haiku/${haiku._id.toString()}`}>Edit</Link>
-                        <form action={deleteHaiku}>
-                            <input type="hidden" name="id" defaultValue={haiku._id.toString()} />
-                            <button>Delete</button>
-                        </form>
-                        <hr />
-                    </div>
-                )
+                return <Haiku haiku={haiku} key={index}/>
             })}
         </div>
     )
